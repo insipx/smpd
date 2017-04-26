@@ -1,0 +1,6 @@
+[package]
+name = "smpd"
+version = "0.1.0"
+authors = ["Andrew Plaza <andrew.plaza15@gmail.com>"]
+
+[dependencies]
