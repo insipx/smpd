@@ -1,3 +1,6 @@
+use sizes::Sizes;
+use registers::envMode;
+
 pub struct Voice {
     // decoded samples. should be twice the size to simplify wrap handling
     but: [isize; Sizes::brr_buf_size * 2],
