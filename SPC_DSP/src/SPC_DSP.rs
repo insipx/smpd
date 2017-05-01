@@ -1,13 +1,14 @@
-use sizes::Sizes;
 use registers::globalRegisters;
 use registers::voiceRegisters;
 use registers::envMode;
+use sizes::Sizes;
+use state::State;
 
 pub const SPC_NO_COPY_STATE_FUNCS: isize = 1;
 pub const SPC_LESS_ACCURATE: isize = 1;
 
 
-struct Voice {
+pub struct Voice {
     // decoded samples. should be twice the size to simplify wrap handling
     buf: [isize; (Sizes::BRR_BUF_SIZE * 2) as usize],
     buf_pos: isize, // place in buffer where next samples will be decoded
@@ -29,9 +30,6 @@ pub trait Emulator {
     //Setup
     fn init(ram_64K: &mut u32);
     fn set_output(sample_t: i16);
-    fn sample_count<'a>(state: &'a State) -> isize {
-        return *state.out as isize - *state.out_begin as isize;
-    }
 
     //resets DSP to power-on state
     // Emulation
@@ -62,7 +60,7 @@ pub trait Emulator {
 
             // always cleared, regardless of data written
             if addr == globalRegisters::r_endx as isize {
-                state.regs[globalReigsters::re_endx as usize] = 0; 
+                state.regs[globalRegisters::re_endx as usize] = 0; 
             }
         }
     }

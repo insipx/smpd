@@ -1,9 +1,11 @@
-use sizes::Sizes;
 use registers::globalRegisters;
 use registers::voiceRegisters;
 use registers::envMode;
+use sizes::Sizes;
+use SPC_DSP::Voice;
 
-struct State<'a> {
+
+pub struct State<'a> {
     //TODO
     regs: [u8; Sizes::REGISTER_COUNT as usize ],
     echo_hist: [[&'a mut isize; (Sizes::ECHO_HIST_SIZE*2) as usize]; 2],
@@ -28,24 +30,28 @@ struct State<'a> {
     extra: [i8; Sizes::EXTRA_SIZE as usize],
 }
 
-impl State<'a> {
+impl<'a> State<'a> {
     
-    fn load(regs: &mut [u8]) {
+    pub fn load(regs: &mut [u8]) {
         return regs; 
     }
    
-    fn extra(&self) -> u8 {
+    pub fn extra(&self) -> u8 {
         return self.extra; 
     }
 
-    fn out_pos(&self) -> u8 {
+    pub fn out_pos(&self) -> u8 {
         return self.out; 
     }
 
-    fn init_counter(&mut self) {
+    fn sample_count(&self) -> isize {
+        return *self.out as isize - *self.out_begin as isize;
+    }
+
+    pub fn init_counter(&mut self) {
         self.counters [0] =     1; 
         self.counters [1] =     0;
-        self.counters [2] = -0x20u;
+        self.counters [2] = -0x20;
         self.counters [3] =  0x0B;
 
         let mut n = 2;
@@ -60,7 +66,7 @@ impl State<'a> {
         self.counter_select [0] = &self.counters [2];
     }
 
-    fn run_counter(&self, i: isize) {
+    pub fn run_counter(&self, i: isize) {
         let mut n = self.counters[i];
 
         if !(n-- & 7) {
@@ -70,7 +76,7 @@ impl State<'a> {
         self.counters[i] = n;
     }
 
-    fn soft_reset_common(&mut self) {
+    pub fn soft_reset_common(&mut self) {
         // require (m.ram)
         self.noise              = 0x4000;
         self.echo_hist_pos      = self.echo_hist;
@@ -85,7 +91,7 @@ impl State<'a> {
     /* fn write_outline(addr: isize, data: isize); */
 
     //TODO: no way will this work, using it as a basis
-    fn update_voice_vol(&mut Self, addr: isize) {
+    pub fn update_voice_vol(&mut self, addr: isize) {
         let mut l = &self.regs[(addr + voiceRegisters::v_voll as isize) as usize];
         let mut r = &self.regs[(addr + voiceRegisters::v_volr as isize) as usize];
         if l * r < &self.surround_threshold {
@@ -99,7 +105,7 @@ impl State<'a> {
         v.volume[1] = r & enabled;
     }
 
-    fn disable_surround(disable: bool, state: &mut State) {
+    pub fn disable_surround(disable: bool, state: &mut State) {
         if disable {
             state.surround_threshold = 0;
         } else {
