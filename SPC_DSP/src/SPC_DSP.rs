@@ -62,7 +62,7 @@ pub trait Emulator {
     //Emulates pressing reset switch on SNES
     fn soft_reset();
     // Reads/writes DSP registers. For accuracy, you must first call spc_run_dsp()
-    fn read<'a>(addr: isize, state: &'a State) -> isize {
+    fn read<'a>(addr: isize, state: &'a State) -> u8 {
         assert!(addr < Sizes::REGISTER_COUNT as isize);
         return state.regs[addr as usize];
     }
@@ -72,7 +72,7 @@ pub trait Emulator {
     //i'm just going straight from C++
     fn write(addr: isize, data: isize, state: &mut State) {
         assert!(addr < Sizes::REGISTER_COUNT as isize);
-        state.regs[addr] = data as u8;
+        state.regs[addr as usize] = data as u8;
         let low: isize = addr & 0x0F;
 
         // voice volumes
@@ -80,12 +80,12 @@ pub trait Emulator {
             Emulator::update_voice_vol(low ^ addr, state);
         } else if low == 0xC {
             if addr == globalRegisters::r_kon as isize {
-                state.new_kon = data as u8;
+                state.new_kon = data;
             }
 
             // always cleared, regardless of data written
             if addr == globalRegisters::r_endx as isize {
-                state.regs[globalRegisters::r_endx] = 0;
+                state.regs[globalRegisters::r_endx as usize] = 0;
             }
         }
     }
@@ -116,8 +116,8 @@ pub trait Emulator {
 
     //TODO: no way will this work, using it as a basis
     fn update_voice_vol(addr: isize, state: &mut State) {
-        let mut l = state.regs[addr + voiceRegisters::v_voll as isize];
-        let mut r = state.regs[addr + voiceRegisters::v_volr as isize];
+        let mut l = state.regs[(addr + voiceRegisters::v_voll as isize) as usize];
+        let mut r = state.regs[(addr + voiceRegisters::v_volr as isize) as usize];
         if l * r < state.surround_threshold {
             //signs differ, so negate those that are negative
             l ^= l >> 7;
