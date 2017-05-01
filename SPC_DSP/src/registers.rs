@@ -1,5 +1,5 @@
 #[derive(Clone, Copy)]
-enum globalRegisters {
+pub enum globalRegisters {
     r_mvoll = 0x0C,
     r_mvolr = 0x1C,
     r_evoll = 0x2C,
@@ -19,7 +19,7 @@ enum globalRegisters {
 }
 
 #[derive(Clone, Copy)]
-enum voiceRegisters {
+pub enum voiceRegisters {
     v_voll = 0x00,
     v_volr = 0x01,
     v_pitchl = 0x02,
@@ -33,7 +33,7 @@ enum voiceRegisters {
 }
 
 #[derive(Clone, Copy)]
-enum envMode {
+pub enum envMode {
     env_release,
     env_attack,
     env_decay,
