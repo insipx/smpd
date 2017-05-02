@@ -3,9 +3,15 @@ use registers::VoiceRegisters;
 use sizes::Sizes;
 use SPC_DSP::Voice;
 
+// Keeps track of the state of the Emulator
+// the Virtual Computer
+//
+// Forseable problems:
+//  I highly doubt any of the pointer arithmetic is correct.
+//  however I have it this way to get the basis out of the way
+//  and then debugging here I come!
 
 pub struct State<'a> {
-    //TODO
     regs: [u8; Sizes::REGISTER_COUNT as usize],
     echo_hist: [[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE * 2) as usize],
     /*echo_hist_pos: [&'a mut isize; 2], //&echo hist[0 to 7]*/ //ignoring this for now
@@ -143,6 +149,14 @@ impl<'a> State<'a> {
             state.surround_threshold = 0;
         } else {
             state.surround_threshold = -0x4000;
+        }
+    }
+
+    fn mute_voices(&mut self, mask: isize) {
+        self.mute_mask = mask;
+        for i in 0..Sizes::VOICE_COUNT {
+            self.voices[i].enabled = (mask >> i & 1) - 1; 
+            self.update_voice_vol((i * 0x10) as isize);
         }
     }
 }

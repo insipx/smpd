@@ -67,24 +67,6 @@ pub trait Emulator {
     // Runs DSP for specified number of clocks (~1024000 per second). Every 32 clocks
     // a pair of samples is to be generated
     fn run(clock_count: isize);
-
-    // Sound control
-    fn mute_voices(mask: isize);
-}
-
-impl Emulator for Emulator {
-    
-
-
-    fn mute_voices(mask: isize) {
-        m.mute_mask = mask;
-        for ( int i = 0; i < voice_count; i++ )
-        {
-            m.voices [i].enabled = (mask >> i & 1) - 1;
-            update_voice_vol( i * 0x10 );
-        }
-    }
-
 }
 
 
