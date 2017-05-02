@@ -7,8 +7,8 @@ use SPC_DSP::Voice;
 
 pub struct State<'a> {
     //TODO
-    regs: [u8; Sizes::REGISTER_COUNT as usize ],
-    echo_hist: [[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE*2) as usize],
+    regs: [u8; Sizes::REGISTER_COUNT as usize],
+    echo_hist: [[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE * 2) as usize],
     /*echo_hist_pos: [&'a mut isize; 2], //&echo hist[0 to 7]*/ //ignoring this for now
     every_other_sample: isize,
     kon: isize,
@@ -31,17 +31,16 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    
-    pub fn load(regs: &mut [u8]) -> &mut [u8]{
-        return regs; 
+    pub fn load(regs: &mut [u8]) -> &mut [u8] {
+        return regs;
     }
-   
-    pub fn extra(&self) -> &[u8] {
-        return self.extra; 
+
+    pub fn extra(&self) -> [i8; 16] {
+        return self.extra;
     }
 
     pub fn out_pos(&self) -> i8 {
-        return *self.out; 
+        return *self.out;
     }
 
     fn sample_count(&self) -> isize {
@@ -71,64 +70,64 @@ impl<'a> State<'a> {
 
             // always cleared, regardless of data written
             if addr == globalRegisters::r_endx as isize {
-                self.regs[globalRegisters::r_endx as usize] = 0; 
+                self.regs[globalRegisters::r_endx as usize] = 0;
             }
         }
     }
 
 
     pub fn init_counter(&mut self) {
-        *self.counters [0] =     1; 
-        *self.counters [1] =     0;
-        *self.counters [2] = (!0) << 5; // FFFFFFE0 ie: 4 bytes, last 5 bits 0
-        *self.counters [3] =  0x0B;
+        *self.counters[0] = 1;
+        *self.counters[1] = 0;
+        *self.counters[2] = (!0) << 5; // FFFFFFE0 ie: 4 bytes, last 5 bits 0
+        *self.counters[3] = 0x0B;
 
         let mut n = 2;
 
         for i in 0..32 {
-
-            self.counter_select [i] = &mut self.counters[n];
-            
+            self.counter_select[i] = &mut self.counters[n];
             //TODO: Make sure this is OK
             n -= 1;
             if n == 0 {
-                n = 3; 
+                n = 3;
             }
         }
-        self.counter_select [0] = &mut self.counters [0];
-        self.counter_select [0] = &mut self.counters [2];
+        self.counter_select[0] = &mut self.counters[0];
+        self.counter_select[0] = &mut self.counters[2];
     }
 
     pub fn run_counter(&self, i: isize) {
-        let mut n = self.counters[i];
-        
+        let mut n = self.counters[i as usize];
+
         //TODO make sure this is OK
-        if !(n & 7) {
-            n -= 6-i; 
+        //probably not going to work
+        if (*n & 7) == 0 {
+            n.wrapping_sub((6 - i) as usize);
         }
-        n-=1;
+        n.wrapping_sub(1);
 
         self.counters[i as usize] = n;
     }
 
     pub fn soft_reset_common(&mut self) {
         // require (m.ram)
-        self.noise              = 0x4000;
-        /* *self.echo_hist_pos      = self.echo_hist; //TODO not sure if right */ // ignoring this until further notice
+        self.noise = 0x4000;
+        /* *self.echo_hist_pos      = self.echo_hist; //TODO not sure if right */
+ // ignoring this until further notice
         self.every_other_sample = 1;
-        self.echo_offset        = 0;
-        self.phase              = 0;
+        self.echo_offset = 0;
+        self.phase = 0;
 
         self.init_counter();
     }
-    
+
     // don't need this?
     /* fn write_outline(addr: isize, data: isize); */
 
     //TODO: no way will this work, using it as a basis
     pub fn update_voice_vol(&mut self, addr: isize) {
-        let mut l:isize = self.regs[(addr + voiceRegisters::v_voll as isize) as usize] as isize;
-        let mut r:isize = self.regs[(addr + voiceRegisters::v_volr as isize) as usize] as isize;
+        let mut l: isize = self.regs[(addr + voiceRegisters::v_voll as isize) as usize] as isize;
+        let mut r: isize = self.regs[(addr + voiceRegisters::v_volr as isize) as usize] as isize;
         if l * r < self.surround_threshold {
             //signs differ, so negate those that are negative
             l ^= l >> 7;
@@ -147,6 +146,4 @@ impl<'a> State<'a> {
             state.surround_threshold = -0x4000;
         }
     }
-
-
 }
