@@ -1,3 +1,6 @@
+use state::State;
+use SPC_DSP::counter_mask as counter_mask;
+
 macro_rules! clamp16 {
     ( $io:expr ) => {
         {
@@ -6,5 +9,11 @@ macro_rules! clamp16 {
             }
         }
     };
+}
+
+macro_rules! read_counter {
+    ( $rate:expr, $state:expr) => {
+        (*$state.counter_select[$rate] & counter_mask![$rate])
+    }
 }
 

@@ -5,6 +5,34 @@ use state::State;
 pub const SPC_NO_COPY_STATE_FUNCS: isize = 1;
 pub const SPC_LESS_ACCURATE: isize = 1;
 
+//TODO some tricks because you can't use if-else in static invocation
+//will eventually be fixed in Rust
+//but for now hacky implementation
+#[macro_use]
+macro_rules! rate {
+   ( $rate:expr, $div:expr ) => {
+        (
+            ($rate >= $div) as i32 * ($rate / $div * 8 - 1) +
+            ($rate <  $div) as i32 * ($rate - 1)
+        ) as u32
+   }
+}
+
+pub static counter_mask: [u32; 32] =
+[
+	rate!(   2,2), rate!(2048,4), rate!(1536,3),
+	rate!(1280,5), rate!(1024,4), rate!( 768,3),
+	rate!( 640,5), rate!( 512,4), rate!( 384,3),
+	rate!( 320,5), rate!( 256,4), rate!( 192,3),
+	rate!( 160,5), rate!( 128,4), rate!(  96,3),
+	rate!(  80,5), rate!(  64,4), rate!(  48,3),
+	rate!(  40,5), rate!(  32,4), rate!(  24,3),
+	rate!(  20,5), rate!(  16,4), rate!(  12,3),
+	rate!(  10,5), rate!(   8,4), rate!(   6,3),
+	rate!(   5,5), rate!(   4,4), rate!(   3,3),
+	               rate!(   2,4),
+	               rate!(   1,4)
+];
 
 pub struct Voice<'a> {
     // decoded samples. should be twice the size to simplify wrap handling
@@ -23,7 +51,7 @@ pub struct Voice<'a> {
 }
 
 
-//TODO: This probably won't work, but it's a start
+//TODO: This probably will work, but it's organization sucks, I think.
 pub trait Emulator {
     //Setup
     fn init(ram_64K: &mut u32);
@@ -43,3 +71,20 @@ pub trait Emulator {
     // Sound control
     fn mute_voices(mask: isize);
 }
+
+impl Emulator for Emulator {
+    
+
+
+    fn mute_voices(mask: isize) {
+        m.mute_mask = mask;
+        for ( int i = 0; i < voice_count; i++ )
+        {
+            m.voices [i].enabled = (mask >> i & 1) - 1;
+            update_voice_vol( i * 0x10 );
+        }
+    }
+
+}
+
+
