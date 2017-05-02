@@ -1,6 +1,5 @@
-use registers::globalRegisters;
-use registers::voiceRegisters;
-use registers::envMode;
+use registers::GlobalRegisters;
+use registers::VoiceRegisters;
 use sizes::Sizes;
 use SPC_DSP::Voice;
 
@@ -64,13 +63,13 @@ impl<'a> State<'a> {
         if low < 0x2 {
             self.update_voice_vol(low ^ addr);
         } else if low == 0xC {
-            if addr == globalRegisters::r_kon as isize {
+            if addr == GlobalRegisters::r_kon as isize {
                 self.new_kon = data;
             }
 
             // always cleared, regardless of data written
-            if addr == globalRegisters::r_endx as isize {
-                self.regs[globalRegisters::r_endx as usize] = 0;
+            if addr == GlobalRegisters::r_endx as isize {
+                self.regs[GlobalRegisters::r_endx as usize] = 0;
             }
         }
     }
@@ -126,14 +125,14 @@ impl<'a> State<'a> {
 
     //TODO: no way will this work, using it as a basis
     pub fn update_voice_vol(&mut self, addr: isize) {
-        let mut l: isize = self.regs[(addr + voiceRegisters::v_voll as isize) as usize] as isize;
-        let mut r: isize = self.regs[(addr + voiceRegisters::v_volr as isize) as usize] as isize;
+        let mut l: isize = self.regs[(addr + VoiceRegisters::v_voll as isize) as usize] as isize;
+        let mut r: isize = self.regs[(addr + VoiceRegisters::v_volr as isize) as usize] as isize;
         if l * r < self.surround_threshold {
             //signs differ, so negate those that are negative
             l ^= l >> 7;
             r ^= r >> 7;
         }
-        let v = &self.voices[(addr >> 4) as usize];
+        let v = &mut self.voices[(addr >> 4) as usize];
         let enabled: isize = v.enabled;
         *v.volume[0] = (l as isize) & enabled;
         *v.volume[1] = (r as isize) & enabled;

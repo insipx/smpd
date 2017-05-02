@@ -3,4 +3,5 @@ pub mod SPC_DSP;
 mod sizes;
 mod registers;
 mod state;
+mod macros;
 

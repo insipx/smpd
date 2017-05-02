@@ -1,6 +1,4 @@
-use registers::globalRegisters;
-use registers::voiceRegisters;
-use registers::envMode;
+use registers::EnvMode;
 use sizes::Sizes;
 use state::State;
 
@@ -16,7 +14,7 @@ pub struct Voice<'a> {
     brr_addr: isize, // address of current BRR block
     brr_offset: isize, // current decoding offset in BRR block
     kon_delay: isize, // KON delay/current setup phase
-    env_mode: envMode,
+    env_mode: EnvMode,
     env: isize, // current envelope level
     hidden_env: isize, // used by GAIN mode 7, obscure quirk
     pub volume: [&'a mut isize; 2], // copy of volume from DSP registers, with surround disabled
