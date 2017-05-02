@@ -19,8 +19,8 @@ pub struct Voice {
     env_mode: envMode,
     env: isize, // current envelope level
     hidden_env: isize, // used by GAIN mode 7, obscure quirk
-    volume: [isize; 2], // copy of volume from DSP registers, with surround disabled
-    enabled: isize, // -1 if enabled, 0 if muted
+    pub volume: [isize; 2], // copy of volume from DSP registers, with surround disabled
+    pub enabled: isize, // -1 if enabled, 0 if muted
                     //TODO: Consider changing enabled to bool
 }
 
@@ -37,35 +37,8 @@ pub trait Emulator {
     //Emulates pressing reset switch on SNES
     fn soft_reset();
     // Reads/writes DSP registers. For accuracy, you must first call spc_run_dsp()
-    fn read<'a>(addr: isize, state: &'a State) -> u8 {
-        assert!(addr < Sizes::REGISTER_COUNT as isize);
-        return state.regs[addr as usize];
-    }
 
-    //won't work either. Need an init/create func to create the
-    //structs we are going to modify
-    //i'm just going straight from C++
-    fn write(addr: isize, data: isize, state: &mut State) {
-        assert!(addr < Sizes::REGISTER_COUNT as isize);
-        state.regs[addr as usize] = data as u8;
-        let low: isize = addr & 0x0F;
-
-        //voice volumes
-        if low < 0x2 {
-            State::update_voice_vol(low ^ addr, state);
-        } else if low == 0xC {
-            if addr == globalRegisters::r_kon as isize {
-                state.new_kon = data;
-            }
-
-            // always cleared, regardless of data written
-            if addr == globalRegisters::r_endx as isize {
-                state.regs[globalRegisters::re_endx as usize] = 0; 
-            }
-        }
-    }
-
-    // Runs DPS for specified number of clocks (~1024000 per second). Every 32 clocks
+    // Runs DSP for specified number of clocks (~1024000 per second). Every 32 clocks
     // a pair of samples is to be generated
     fn run(clock_count: isize);
 
