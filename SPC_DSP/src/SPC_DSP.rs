@@ -8,7 +8,7 @@ pub const SPC_NO_COPY_STATE_FUNCS: isize = 1;
 pub const SPC_LESS_ACCURATE: isize = 1;
 
 
-pub struct Voice {
+pub struct Voice<'a> {
     // decoded samples. should be twice the size to simplify wrap handling
     buf: [isize; (Sizes::BRR_BUF_SIZE * 2) as usize],
     buf_pos: isize, // place in buffer where next samples will be decoded
@@ -19,7 +19,7 @@ pub struct Voice {
     env_mode: envMode,
     env: isize, // current envelope level
     hidden_env: isize, // used by GAIN mode 7, obscure quirk
-    pub volume: [isize; 2], // copy of volume from DSP registers, with surround disabled
+    pub volume: [&'a mut isize; 2], // copy of volume from DSP registers, with surround disabled
     pub enabled: isize, // -1 if enabled, 0 if muted
                     //TODO: Consider changing enabled to bool
 }

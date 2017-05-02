@@ -16,10 +16,10 @@ pub struct State<'a> {
     echo_offset: isize,
     echo_length: isize,
     phase: isize,
-    counters: [&'a mut usize; 4],
+    counters: [usize; 4],
     new_kon: isize,
     t_koff: isize,
-    voices: [Voice; Sizes::VOICE_COUNT as usize],
+    voices: [Voice<'a>; Sizes::VOICE_COUNT as usize],
     counter_select: [&'a mut usize; 32],
     ram: &'a mut u8, // 64K shared RAM between DSP and SMP
     mute_mask: isize,
@@ -77,31 +77,31 @@ impl<'a> State<'a> {
 
 
     pub fn init_counter(&mut self) {
-        *self.counters[0] = 1;
-        *self.counters[1] = 0;
-        *self.counters[2] = (!0) << 5; // FFFFFFE0 ie: 4 bytes, last 5 bits 0
-        *self.counters[3] = 0x0B;
+        self.counters[0] = 1;
+        self.counters[1] = 0;
+        self.counters[2] = (!0) << 5; // FFFFFFE0 ie: 4 bytes, last 5 bits 0
+        self.counters[3] = 0x0B;
 
         let mut n = 2;
 
         for i in 0..32 {
-            self.counter_select[i] = &mut self.counters[n];
+            *self.counter_select[i] = self.counters[n].clone();
             //TODO: Make sure this is OK
             n -= 1;
             if n == 0 {
                 n = 3;
             }
         }
-        self.counter_select[0] = &mut self.counters[0];
-        self.counter_select[0] = &mut self.counters[2];
+        *self.counter_select[0] = self.counters[0].clone();
+        *self.counter_select[30] = self.counters[2].clone();
     }
 
-    pub fn run_counter(&self, i: isize) {
+    pub fn run_counter(&mut self, i: isize) {
         let mut n = self.counters[i as usize];
 
         //TODO make sure this is OK
         //probably not going to work
-        if (*n & 7) == 0 {
+        if (n & 7) == 0 {
             n.wrapping_sub((6 - i) as usize);
         }
         n.wrapping_sub(1);
@@ -135,8 +135,8 @@ impl<'a> State<'a> {
         }
         let v = &self.voices[(addr >> 4) as usize];
         let enabled: isize = v.enabled;
-        v.volume[0] = (l as isize) & enabled;
-        v.volume[1] = (r as isize) & enabled;
+        *v.volume[0] = (l as isize) & enabled;
+        *v.volume[1] = (r as isize) & enabled;
     }
 
     pub fn disable_surround(disable: bool, state: &mut State) {
