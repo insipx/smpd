@@ -1,6 +1,8 @@
+use registers::GlobalRegisters;
 use registers::EnvMode;
 use sizes::Sizes;
 use state::State;
+use macros;
 
 //TODO some tricks because you can't use if-else in static invocation
 //will eventually be fixed in Rust
@@ -40,20 +42,13 @@ pub struct Voice<'a> {
 
 
 //TODO: This probably will work, but it's organization sucks, I think.
-pub trait Emulator {
+pub trait Emulator<'a> {
     
-    static const m:State;
+    const m:State<'a>;
 
-    fn init(&mut self, ram_64K: u32);
+    fn init(&self, ram_64K: u32);
 
-    fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]) -> &mut [u8] {
-
-    //resets DSP to power-on state
-    // Emulation
-    fn reset();
-    //Emulates pressing reset switch on SNES
-    fn soft_reset();
-    // Reads/writes DSP registers. For accuracy, you must first call spc_run_dsp()
+    fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]);
 
     // Runs DSP for specified number of clocks (~1024000 per second). Every 32 clocks
     // a pair of samples is to be generated
@@ -61,14 +56,17 @@ pub trait Emulator {
 }
 
 
-impl Voice for Emulator {
+impl<'a> Emulator<'a> for Voice<'a> {
+   
+    //global state
+    const m:State<'a> = state::create();
 
-    fn init(&mut self, ram_64K: u32) {
-        self.ram = ram_64K; 
-        self.mute_voices(0);
-        self.disable_surround(false);
-        self.set_output(0,0);
-        self.reset();
+    fn init(&self, ram_64K: u32) {
+        Self::m.ram = ram_64K; 
+        Self::m.mute_voices(0);
+        Self::m.disable_surround(false);
+        Self::m.set_output(0,0);
+        Self::m.reset();
 
         //debug
         if NDEBUG {
@@ -82,19 +80,23 @@ impl Voice for Emulator {
         //SPC_DSP has a verify byte order; but i will forgo this for now
     }
 
-    pub fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]) -> &mut [u8] {
-        self.regs = regs;
+    fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]) {
+        m.regs = regs;
 
         let mut i:isize;
         //be careful here
         for i in (0..Sizes::VOICE_COUNT).rev() {
-            self.voices[i].brr_offset = 1;
-            self.voices[i].buf_pos = &self.voices[i].buf;
+            Self::m.voices[i].brr_offset = 1;
+            Self::m.voices[i].buf_pos = &Self::m.voices[i].buf;
         }
-        self.new_kon = reg!(kon);
+        m.new_kon = reg!(kon, m);
         
-        self.mute_voices( self.mute_mask );
-        self.soft_reset_common();
+        m.mute_voices( m.mute_mask );
+        m.soft_reset_common();
+    }
+
+    fn run(clock_count: isize) {
+        unimplemented!(); 
     }
 }
 

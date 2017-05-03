@@ -1,4 +1,7 @@
 use macros;
+
+use std::ptr;
+
 use registers::VoiceRegisters;
 use registers::GlobalRegisters;
 use sizes::Sizes;
@@ -39,11 +42,29 @@ pub struct State<'a> {
 
 impl<'a> State<'a> {
     
-    pub fn create(config: Config) -> State {
+    pub fn create() -> &<'a> mut State<'a> {
 
         State {
-        
-        
+            regs: [0; Sizes::REGISTER_COUNT as usize],
+            echo_hist: ptr::null(),
+            every_other_sample: 0,
+            kon: 0,
+            noise: 0,
+            echo_offset: 0,
+            echo_length: 0,
+            phase: 0,
+            counters: [0; 4],
+            new_kon: 0,
+            t_koff: 0,
+            voices: [{}; Sizes::VOICE_COUNT as usize],
+            counter_select: ptr::null(),
+            ram: ptr::null(), // 64K shared RAM between DSP and SMP
+            mute_mask: 0,
+            surround_threshold: 0,
+            out: ptr::null(),
+            out_end: ptr::null(),
+            out_begin: ptr::null(),
+            extra: [0; Sizes::EXTRA_SIZE as usize],
         } 
     }
 
@@ -65,14 +86,14 @@ impl<'a> State<'a> {
     }
 
     pub fn set_output(out: &mut i16, size:&mut isize) {
-        if (out == 0) {
+        if *out == 0 {
             out = self.extra;
-            size = Sizes::EXTRA_SIZE;
+            *size = Sizes::EXTRA_SIZE as isize;
         }
 
         self.out_begin = out;
         self.out = out;
-        self.out_end = out + size;
+        self.out_end = self.out + size;
     }
 
     //won't work either. Need an init/create func to create the
@@ -141,6 +162,17 @@ impl<'a> State<'a> {
         self.phase = 0;
 
         self.init_counter();
+    }
+
+    //resets DSP to power-on state
+    // Emulation
+    pub fn reset(&self) {
+        unimplemented!(); 
+    }
+
+    //Emulates pressing reset switch on SNES
+    pub fn soft_reset(&self){
+        unimplemented!(); 
     }
 
     // don't need this?

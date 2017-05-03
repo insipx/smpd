@@ -26,10 +26,10 @@ macro_rules! rate {
    }
 }
 
-
+// m.foo = (self|m).regs[GlobalRegisters::r_kon] 
 macro_rules! reg {
-    ($n:ident) => {
-        GlobalRegisters::self.regs[concat_idents!(r_, $n)]
+    ($n:ident, $m:path) => {
+        $m.regs[concat_idents!(r_, $n)]
     }
 }
 

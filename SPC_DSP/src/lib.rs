@@ -1,5 +1,6 @@
 #![feature(associated_consts)]
 #![feature(concat_idents)]
+
 #[macro_use]
 mod macros;
 
