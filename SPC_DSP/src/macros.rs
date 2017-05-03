@@ -32,9 +32,8 @@ macro_rules! rate {
 // m.foo = regs[GlobalRegisters::r_kon] 
 macro_rules! reg {
     ($n:path) => {
-        {
+        {   
             m.regs[GlobalRegisters::concat_idents!(r_, $n)]
         }
     }
 }
-

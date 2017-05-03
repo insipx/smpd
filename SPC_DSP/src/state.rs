@@ -16,6 +16,8 @@ use config::*;
 //  however I have it this way to get the basis out of the way
 //  and then debugging here I come!
 
+pub type sample_t = i16;
+
 pub struct State<'a> {
     pub regs: [u8; Sizes::REGISTER_COUNT as usize],
     echo_hist: [[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE * 2) as usize],
@@ -34,16 +36,16 @@ pub struct State<'a> {
     ram: &'a mut u8, // 64K shared RAM between DSP and SMP
     mute_mask: isize,
     surround_threshold: isize,
-    out: &'a i8,
-    out_end: &'a mut i8,
-    out_begin: &'a mut i8,
-    extra: [i8; Sizes::EXTRA_SIZE as usize],
+    out: *mut sample_t,
+    out_end: *mut sample_t,
+    out_begin: *mut sample_t,
+    extra: [sample_t; Sizes::EXTRA_SIZE as usize],
 }
 
 //functions that directly modify the state
-impl<'a> State<'a> {
+impl State<'static> {
     
-    pub fn create() -> &<'a> mut State<'a> {
+    pub fn new() -> State<'static> {
 
         State {
             regs: [0; Sizes::REGISTER_COUNT as usize],
@@ -69,6 +71,10 @@ impl<'a> State<'a> {
         } 
     }
 
+    pub fn set_ram(&mut self, ram_64K:u32 ) {
+        self.ram = ram_64K; 
+    }
+
     pub fn extra(&self) -> [i8; 16] {
         return self.extra;
     }
@@ -86,15 +92,21 @@ impl<'a> State<'a> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(&mut self, out: &mut i16, size:&mut isize) {
-        if *out == 0 {
-            out = self.extra;
-            *size = Sizes::EXTRA_SIZE as isize;
+    pub fn set_output(&mut self, out: *mut Option<sample_t>, size: isize) {
+        match out {
+            None => {
+                out = &self.extra;
+                size = Sizes::EXTRA_SIZE as isize;
+            } 
         }
 
-        self.out_begin = out;
-        self.out = out;
-        self.out_end = self.out + size;
+        match out {
+            Some(ref p) => {
+                self.out_begin = p;
+                self.out = p;
+                self.out_end = *p + size;
+            } 
+        }
     }
 
     pub fn write(&mut self, addr: isize, data: isize) {

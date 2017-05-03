@@ -1,3 +1,6 @@
+use std::ptr;
+
+use state::sample_t as sample_t;
 use registers::GlobalRegisters;
 use registers::EnvMode;
 use sizes::Sizes;
@@ -8,7 +11,7 @@ use macros;
 
 
 //global state
-const m:State<'a> = State::create();
+const m:State = State::new();
 
 pub static counter_mask: [u32; 32] =
 [
@@ -59,10 +62,10 @@ pub trait Emulator<'a> {
 impl<'a> Emulator<'a> for Voice<'a> {
    
     fn init(&self, ram_64K: u32) {
-        m.ram = ram_64K; 
+        m.set_ram(ram_64K); 
         m.mute_voices(0);
         m.disable_surround(false);
-        m.set_output(0,0);
+        m.set_output(None, 0isize);
         m.reset();
 
         //debug
@@ -86,7 +89,7 @@ impl<'a> Emulator<'a> for Voice<'a> {
             m.voices[i].brr_offset = 1;
             m.voices[i].buf_pos = &Self::m.voices[i].buf as isize;
         }
-        m.new_kon = reg!(kon);
+        m.new_kon = m.regs(GlobalRegisters::r_kon);
         
         m.mute_voices( m.mute_mask );
         m.soft_reset_common();
