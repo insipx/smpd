@@ -17,3 +17,19 @@ macro_rules! read_counter {
     }
 }
 
+macro_rules! rate {
+   ( $rate:expr, $div:expr ) => {
+        (
+            ($rate >= $div) as i32 * ($rate / $div * 8 - 1) +
+            ($rate <  $div) as i32 * ($rate - 1)
+        ) as u32
+   }
+}
+
+
+macro_rules! reg {
+    ($n:ident) => {
+        GlobalRegisters::self.regs[concat_idents!(r_, $n)]
+    }
+}
+

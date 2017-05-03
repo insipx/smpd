@@ -1,7 +1,9 @@
-use registers::GlobalRegisters;
+use macros;
 use registers::VoiceRegisters;
+use registers::GlobalRegisters;
 use sizes::Sizes;
 use SPC_DSP::Voice;
+use config::*;
 
 // Keeps track of the state of the Emulator
 // the Virtual Computer
@@ -36,8 +38,13 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub fn load(regs: &mut [u8]) -> &mut [u8] {
-        return regs;
+    
+    pub fn create(config: Config) -> State {
+
+        State {
+        
+        
+        } 
     }
 
     pub fn extra(&self) -> [i8; 16] {
@@ -48,19 +55,30 @@ impl<'a> State<'a> {
         return *self.out;
     }
 
-    fn sample_count(&self) -> isize {
+    pub fn sample_count(&self) -> isize {
         return *self.out as isize - *self.out_begin as isize;
     }
 
-    fn read(&self, addr: isize) -> u8 {
+    pub fn read(&self, addr: isize) -> u8 {
         assert!(addr < Sizes::REGISTER_COUNT as isize);
         return self.regs[addr as usize];
+    }
+
+    pub fn set_output(out: &mut i16, size:&mut isize) {
+        if (out == 0) {
+            out = self.extra;
+            size = Sizes::EXTRA_SIZE;
+        }
+
+        self.out_begin = out;
+        self.out = out;
+        self.out_end = out + size;
     }
 
     //won't work either. Need an init/create func to create the
     //structs we are going to modify
     //i'm just going straight from C++
-    fn write(&mut self, addr: isize, data: isize) {
+    pub fn write(&mut self, addr: isize, data: isize) {
         assert!(addr < Sizes::REGISTER_COUNT as isize);
         self.regs[addr as usize] = data as u8;
         let low: isize = addr & 0x0F;
@@ -79,7 +97,6 @@ impl<'a> State<'a> {
             }
         }
     }
-
 
     pub fn init_counter(&mut self) {
         self.counters[0] = 1;
@@ -118,7 +135,7 @@ impl<'a> State<'a> {
         // require (m.ram)
         self.noise = 0x4000;
         /* *self.echo_hist_pos      = self.echo_hist; //TODO not sure if right */
- // ignoring this until further notice
+         // ignoring this until further notice
         self.every_other_sample = 1;
         self.echo_offset = 0;
         self.phase = 0;
@@ -152,7 +169,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn mute_voices(&mut self, mask: isize) {
+    pub fn mute_voices(&mut self, mask: isize) {
         self.mute_mask = mask;
         for i in 0..Sizes::VOICE_COUNT {
             self.voices[i].enabled = (mask >> i & 1) - 1; 

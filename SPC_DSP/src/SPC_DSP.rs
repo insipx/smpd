@@ -2,21 +2,9 @@ use registers::EnvMode;
 use sizes::Sizes;
 use state::State;
 
-pub const SPC_NO_COPY_STATE_FUNCS: isize = 1;
-pub const SPC_LESS_ACCURATE: isize = 1;
-
 //TODO some tricks because you can't use if-else in static invocation
 //will eventually be fixed in Rust
 //but for now hacky implementation
-#[macro_use]
-macro_rules! rate {
-   ( $rate:expr, $div:expr ) => {
-        (
-            ($rate >= $div) as i32 * ($rate / $div * 8 - 1) +
-            ($rate <  $div) as i32 * ($rate - 1)
-        ) as u32
-   }
-}
 
 pub static counter_mask: [u32; 32] =
 [
@@ -37,10 +25,10 @@ pub static counter_mask: [u32; 32] =
 pub struct Voice<'a> {
     // decoded samples. should be twice the size to simplify wrap handling
     buf: [isize; (Sizes::BRR_BUF_SIZE * 2) as usize],
-    buf_pos: isize, // place in buffer where next samples will be decoded
+    pub buf_pos: isize, // place in buffer where next samples will be decoded
     interp_pos: isize, // relative fractional positoin in sample (0x1000 = 1.0)
     brr_addr: isize, // address of current BRR block
-    brr_offset: isize, // current decoding offset in BRR block
+    pub brr_offset: isize, // current decoding offset in BRR block
     kon_delay: isize, // KON delay/current setup phase
     env_mode: EnvMode,
     env: isize, // current envelope level
@@ -53,9 +41,12 @@ pub struct Voice<'a> {
 
 //TODO: This probably will work, but it's organization sucks, I think.
 pub trait Emulator {
-    //Setup
-    fn init(ram_64K: &mut u32);
-    fn set_output(sample_t: i16);
+    
+    static const m:State;
+
+    fn init(&mut self, ram_64K: u32);
+
+    fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]) -> &mut [u8] {
 
     //resets DSP to power-on state
     // Emulation
@@ -68,5 +59,44 @@ pub trait Emulator {
     // a pair of samples is to be generated
     fn run(clock_count: isize);
 }
+
+
+impl Voice for Emulator {
+
+    fn init(&mut self, ram_64K: u32) {
+        self.ram = ram_64K; 
+        self.mute_voices(0);
+        self.disable_surround(false);
+        self.set_output(0,0);
+        self.reset();
+
+        //debug
+        if NDEBUG {
+            assert_eq!(0x8000 as i16, -0x8000);
+            assert!( (-1 >> 1) == -1 );
+            let mut i:i16;
+            i = 0x8000; clamp16!(i); assert!(i == 0x7FFF);
+            i = -0x8001; clamp16!(i); assert!(i == -0x8000);
+        }
+
+        //SPC_DSP has a verify byte order; but i will forgo this for now
+    }
+
+    pub fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]) -> &mut [u8] {
+        self.regs = regs;
+
+        let mut i:isize;
+        //be careful here
+        for i in (0..Sizes::VOICE_COUNT).rev() {
+            self.voices[i].brr_offset = 1;
+            self.voices[i].buf_pos = &self.voices[i].buf;
+        }
+        self.new_kon = reg!(kon);
+        
+        self.mute_voices( self.mute_mask );
+        self.soft_reset_common();
+    }
+}
+
 
 
