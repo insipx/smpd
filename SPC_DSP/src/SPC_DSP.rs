@@ -2,11 +2,13 @@ use registers::GlobalRegisters;
 use registers::EnvMode;
 use sizes::Sizes;
 use state::State;
+use config::*;
+
 use macros;
 
-//TODO some tricks because you can't use if-else in static invocation
-//will eventually be fixed in Rust
-//but for now hacky implementation
+
+//global state
+const m:State<'a> = State::create();
 
 pub static counter_mask: [u32; 32] =
 [
@@ -44,8 +46,6 @@ pub struct Voice<'a> {
 //TODO: This probably will work, but it's organization sucks, I think.
 pub trait Emulator<'a> {
     
-    const m:State<'a>;
-
     fn init(&self, ram_64K: u32);
 
     fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]);
@@ -58,15 +58,12 @@ pub trait Emulator<'a> {
 
 impl<'a> Emulator<'a> for Voice<'a> {
    
-    //global state
-    const m:State<'a> = state::create();
-
     fn init(&self, ram_64K: u32) {
-        Self::m.ram = ram_64K; 
-        Self::m.mute_voices(0);
-        Self::m.disable_surround(false);
-        Self::m.set_output(0,0);
-        Self::m.reset();
+        m.ram = ram_64K; 
+        m.mute_voices(0);
+        m.disable_surround(false);
+        m.set_output(0,0);
+        m.reset();
 
         //debug
         if NDEBUG {
@@ -86,10 +83,10 @@ impl<'a> Emulator<'a> for Voice<'a> {
         let mut i:isize;
         //be careful here
         for i in (0..Sizes::VOICE_COUNT).rev() {
-            Self::m.voices[i].brr_offset = 1;
-            Self::m.voices[i].buf_pos = &Self::m.voices[i].buf;
+            m.voices[i].brr_offset = 1;
+            m.voices[i].buf_pos = &Self::m.voices[i].buf as isize;
         }
-        m.new_kon = reg!(kon, m);
+        m.new_kon = reg!(kon);
         
         m.mute_voices( m.mute_mask );
         m.soft_reset_common();

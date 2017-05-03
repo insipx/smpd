@@ -6,3 +6,6 @@ s project is a learning experience, so we shall see.
 
 TODO:
 In the future, if there is a better solution, modify this.
+
+This is a project to become much more adept at Rust. So, most of the code is probably shit.
+

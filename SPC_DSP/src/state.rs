@@ -17,7 +17,7 @@ use config::*;
 //  and then debugging here I come!
 
 pub struct State<'a> {
-    regs: [u8; Sizes::REGISTER_COUNT as usize],
+    pub regs: [u8; Sizes::REGISTER_COUNT as usize],
     echo_hist: [[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE * 2) as usize],
     /*echo_hist_pos: [&'a mut isize; 2], //&echo hist[0 to 7]*/ //ignoring this for now
     every_other_sample: isize,
@@ -29,7 +29,7 @@ pub struct State<'a> {
     counters: [usize; 4],
     new_kon: isize,
     t_koff: isize,
-    voices: [Voice<'a>; Sizes::VOICE_COUNT as usize],
+    pub voices: [Voice<'a>; Sizes::VOICE_COUNT as usize],
     counter_select: [&'a mut usize; 32],
     ram: &'a mut u8, // 64K shared RAM between DSP and SMP
     mute_mask: isize,
@@ -40,6 +40,7 @@ pub struct State<'a> {
     extra: [i8; Sizes::EXTRA_SIZE as usize],
 }
 
+//functions that directly modify the state
 impl<'a> State<'a> {
     
     pub fn create() -> &<'a> mut State<'a> {
@@ -85,7 +86,7 @@ impl<'a> State<'a> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(out: &mut i16, size:&mut isize) {
+    pub fn set_output(&mut self, out: &mut i16, size:&mut isize) {
         if *out == 0 {
             out = self.extra;
             *size = Sizes::EXTRA_SIZE as isize;
@@ -96,9 +97,6 @@ impl<'a> State<'a> {
         self.out_end = self.out + size;
     }
 
-    //won't work either. Need an init/create func to create the
-    //structs we are going to modify
-    //i'm just going straight from C++
     pub fn write(&mut self, addr: isize, data: isize) {
         assert!(addr < Sizes::REGISTER_COUNT as isize);
         self.regs[addr as usize] = data as u8;
@@ -193,11 +191,11 @@ impl<'a> State<'a> {
         *v.volume[1] = (r as isize) & enabled;
     }
 
-    pub fn disable_surround(disable: bool, state: &mut State) {
+    pub fn disable_surround(&mut self, disable: bool) {
         if disable {
-            state.surround_threshold = 0;
+            self.surround_threshold = 0;
         } else {
-            state.surround_threshold = -0x4000;
+            self.surround_threshold = -0x4000;
         }
     }
 

@@ -17,6 +17,9 @@ macro_rules! read_counter {
     }
 }
 
+//TODO some tricks because you can't use if-else in static invocation
+//will eventually be fixed in Rust
+//but for now hacky implementation
 macro_rules! rate {
    ( $rate:expr, $div:expr ) => {
         (
@@ -26,10 +29,12 @@ macro_rules! rate {
    }
 }
 
-// m.foo = (self|m).regs[GlobalRegisters::r_kon] 
+// m.foo = regs[GlobalRegisters::r_kon] 
 macro_rules! reg {
-    ($n:ident, $m:path) => {
-        $m.regs[concat_idents!(r_, $n)]
+    ($n:path) => {
+        {
+            m.regs[GlobalRegisters::concat_idents!(r_, $n)]
+        }
     }
 }
 
