@@ -92,20 +92,20 @@ impl State<'static> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(&mut self, out: *mut Option<sample_t>, size: isize) {
+    pub fn set_output(&mut self, out: &Option<sample_t>, size: isize) {
         match out {
             None => {
                 out = &self.extra;
                 size = Sizes::EXTRA_SIZE as isize;
+                self.out_begin = out;
+                self.out = out;
+                self.out_end = *out + size;
             } 
-        }
-
-        match out {
             Some(ref p) => {
                 self.out_begin = p;
                 self.out = p;
                 self.out_end = *p + size;
-            } 
+            }
         }
     }
 
