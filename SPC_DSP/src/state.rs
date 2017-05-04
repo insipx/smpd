@@ -29,16 +29,16 @@ pub struct State<'a> {
     echo_length: isize,
     phase: isize,
     counters: [usize; 4],
-    new_kon: isize,
+    pub new_kon: isize,
     t_koff: isize,
     pub voices: [Voice<'a>; Sizes::VOICE_COUNT as usize],
     counter_select: [&'a mut usize; 32],
     ram: &'a mut u8, // 64K shared RAM between DSP and SMP
-    mute_mask: isize,
+    pub mute_mask: isize,
     surround_threshold: isize,
-    out: *mut sample_t,
-    out_end: *mut sample_t,
-    out_begin: *mut sample_t,
+    out: *mut Option<sample_t>, //out: *mut sample_t,
+    out_end: *mut Option<sample_t>,
+    out_begin: *mut Option<sample_t>,
     extra: [sample_t; Sizes::EXTRA_SIZE as usize],
 }
 
@@ -64,11 +64,14 @@ impl State<'static> {
             ram: ptr::null(), // 64K shared RAM between DSP and SMP
             mute_mask: 0,
             surround_threshold: 0,
-            out: ptr::null(),
+            out: None,
             out_end: ptr::null(),
             out_begin: ptr::null(),
             extra: [0; Sizes::EXTRA_SIZE as usize],
         } 
+    }
+    pub fn load_int(&mut self, item:isize, value:isize) {
+        self.item = value; 
     }
 
     pub fn set_ram(&mut self, ram_64K:u32 ) {
@@ -92,19 +95,19 @@ impl State<'static> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(&mut self, out: &Option<sample_t>, size: isize) {
-        match out {
+    pub fn set_output(&mut self, out: &mut Option<sample_t>, size: isize) {
+        match *out {
             None => {
-                out = &self.extra;
+                out = &mut self.extra;
                 size = Sizes::EXTRA_SIZE as isize;
                 self.out_begin = out;
                 self.out = out;
                 self.out_end = *out + size;
             } 
-            Some(ref p) => {
+            Some(&mut p) => {
                 self.out_begin = p;
-                self.out = p;
-                self.out_end = *p + size;
+                self.out =  p;
+                self.out_end = p + size;
             }
         }
     }

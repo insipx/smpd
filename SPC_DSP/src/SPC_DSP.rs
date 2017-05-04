@@ -32,7 +32,7 @@ pub static counter_mask: [u32; 32] =
 pub struct Voice<'a> {
     // decoded samples. should be twice the size to simplify wrap handling
     buf: [isize; (Sizes::BRR_BUF_SIZE * 2) as usize],
-    pub buf_pos: isize, // place in buffer where next samples will be decoded
+    pub buf_pos: *mut Option<isize>, // place in buffer where next samples will be decoded
     interp_pos: isize, // relative fractional positoin in sample (0x1000 = 1.0)
     brr_addr: isize, // address of current BRR block
     pub brr_offset: isize, // current decoding offset in BRR block
@@ -65,7 +65,8 @@ impl<'a> Emulator<'a> for Voice<'a> {
         m.set_ram(ram_64K); 
         m.mute_voices(0);
         m.disable_surround(false);
-        m.set_output(None, 0isize);
+        let mut out: Option<sample_t> = None;
+        m.set_output(&mut out, 0isize);
         m.reset();
 
         //debug
@@ -87,11 +88,10 @@ impl<'a> Emulator<'a> for Voice<'a> {
         //be careful here
         for i in (0..Sizes::VOICE_COUNT).rev() {
             m.voices[i].brr_offset = 1;
-            m.voices[i].buf_pos = &Self::m.voices[i].buf as isize;
+            m.voices[i].buf_pos = &mut m.voices[i].buf;
         }
-        m.new_kon = m.regs(GlobalRegisters::r_kon);
-        
-        m.mute_voices( m.mute_mask );
+        m.new_kon = reg!(kon) as isize;
+        m.mute_voices(m.mute_mask);
         m.soft_reset_common();
     }
 
