@@ -17,6 +17,9 @@ use config::*;
 //  and then debugging here I come!
 
 pub type sample_t = i16;
+const NULL_SAMPLE_T:*mut sample_t = 0 as *mut sample_t;
+const NULL_U8: *mut u8 = 0 as *mut u8;
+
 
 pub struct State<'a> {
     pub regs: [u8; Sizes::REGISTER_COUNT as usize],
@@ -61,20 +64,17 @@ impl State<'static> {
             t_koff: 0,
             voices: [{}; Sizes::VOICE_COUNT as usize],
             counter_select: [0;32],
-            ram: ptr::null(), // 64K shared RAM between DSP and SMP
+            ram: NULL_U8, // 64K shared RAM between DSP and SMP
             mute_mask: 0,
             surround_threshold: 0,
-            out: None,
-            out_end: None,
-            out_begin: None.unwrap(),
+            out: NULL_SAMPLE_T,
+            out_end: NULL_SAMPLE_T,
+            out_begin: NULL_SAMPLE_T,
             extra: [0; Sizes::EXTRA_SIZE as usize],
         } 
     }
-    pub fn load_int(&mut self, item:isize, value:isize) {
-        self.item = value; 
-    }
-
-    pub fn set_ram(&mut self, ram_64K: &u8 ) {
+    
+    pub fn set_ram(&mut self, ram_64K: &mut u8 ) {
         self.ram = ram_64K; 
     }
 
@@ -82,7 +82,7 @@ impl State<'static> {
         return self.extra;
     }
 
-    pub fn out_pos(&self) -> i8 {
+    pub fn out_pos(&self) -> sample_t {
         return *self.out;
     }
 
@@ -95,21 +95,20 @@ impl State<'static> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(&mut self, out: &mut Option<sample_t>, size: isize) {
-        match *out {
-            None => {
-                out = &mut self.extra;
-                size = Sizes::EXTRA_SIZE as isize;
-                self.out_begin = out;
-                self.out = out;
-                self.out_end = out + size;
-            } 
-            Some(ref mut p) => {
-                self.out_begin = p;
-                self.out =  p;
-                self.out_end = Some(p) + Some(size);
-            }
+    pub fn set_output(&mut self, out: *mut sample_t, out_size: isize) {
+        assert_eq!((out_size & 1), 0);
+        if out == NULL_SAMPLE_T {
+            out = &mut self.extra as &mut [...]; 
+            out_size = Sizes::EXTRA_SIZE as isize;
+            self.out_begin = out;
+            self.out = out;
+            self.out_end = *(out + out_size);
         }
+
+        self.out_begin = out;
+        self.out = out;
+        self.out_end = *(out + out_size);
+
     }
 
     pub fn write(&mut self, addr: isize, data: isize) {

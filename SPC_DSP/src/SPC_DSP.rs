@@ -1,6 +1,8 @@
 use std::ptr;
 
 use state::sample_t as sample_t;
+use state::NULL_SAMPLE_T as NULL_SAMPLE_T;
+use state::NULL_U8 as NULL_U8;
 use registers::GlobalRegisters;
 use registers::EnvMode;
 use sizes::Sizes;
@@ -65,8 +67,7 @@ impl<'a> Emulator<'a> for Voice<'a> {
         m.set_ram(ram_64K); 
         m.mute_voices(0);
         m.disable_surround(false);
-        let mut out: Option<sample_t> = None;
-        m.set_output(&mut out, 0isize);
+        m.set_output(NULL_SAMPLE_T, 0isize);
         m.reset();
 
         //debug
