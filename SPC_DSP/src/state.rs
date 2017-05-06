@@ -20,7 +20,7 @@ pub type sample_t = i16;
 
 pub struct State<'a> {
     pub regs: [u8; Sizes::REGISTER_COUNT as usize],
-    echo_hist: [[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE * 2) as usize],
+    echo_hist: Option<[[&'a mut isize; 2]; (Sizes::ECHO_HIST_SIZE * 2) as usize]>,
     /*echo_hist_pos: [&'a mut isize; 2], //&echo hist[0 to 7]*/ //ignoring this for now
     every_other_sample: isize,
     kon: isize,
@@ -32,13 +32,13 @@ pub struct State<'a> {
     pub new_kon: isize,
     t_koff: isize,
     pub voices: [Voice<'a>; Sizes::VOICE_COUNT as usize],
-    counter_select: [&'a mut usize; 32],
-    ram: &'a mut u8, // 64K shared RAM between DSP and SMP
+    counter_select: [usize; 32],
+    ram: *mut u8, // 64K shared RAM between DSP and SMP
     pub mute_mask: isize,
     surround_threshold: isize,
-    out: *mut Option<sample_t>, //out: *mut sample_t,
-    out_end: *mut Option<sample_t>,
-    out_begin: *mut Option<sample_t>,
+    out: *mut sample_t,
+    out_end: *mut sample_t,
+    out_begin: *mut sample_t,
     extra: [sample_t; Sizes::EXTRA_SIZE as usize],
 }
 
@@ -49,7 +49,7 @@ impl State<'static> {
 
         State {
             regs: [0; Sizes::REGISTER_COUNT as usize],
-            echo_hist: ptr::null(),
+            echo_hist: None,
             every_other_sample: 0,
             kon: 0,
             noise: 0,
@@ -60,13 +60,13 @@ impl State<'static> {
             new_kon: 0,
             t_koff: 0,
             voices: [{}; Sizes::VOICE_COUNT as usize],
-            counter_select: ptr::null(),
+            counter_select: [0;32],
             ram: ptr::null(), // 64K shared RAM between DSP and SMP
             mute_mask: 0,
             surround_threshold: 0,
             out: None,
-            out_end: ptr::null(),
-            out_begin: ptr::null(),
+            out_end: None,
+            out_begin: None.unwrap(),
             extra: [0; Sizes::EXTRA_SIZE as usize],
         } 
     }
@@ -74,11 +74,11 @@ impl State<'static> {
         self.item = value; 
     }
 
-    pub fn set_ram(&mut self, ram_64K:u32 ) {
+    pub fn set_ram(&mut self, ram_64K: &u8 ) {
         self.ram = ram_64K; 
     }
 
-    pub fn extra(&self) -> [i8; 16] {
+    pub fn extra(&self) -> [sample_t; 16] {
         return self.extra;
     }
 
@@ -102,12 +102,12 @@ impl State<'static> {
                 size = Sizes::EXTRA_SIZE as isize;
                 self.out_begin = out;
                 self.out = out;
-                self.out_end = *out + size;
+                self.out_end = out + size;
             } 
-            Some(&mut p) => {
+            Some(ref mut p) => {
                 self.out_begin = p;
                 self.out =  p;
-                self.out_end = p + size;
+                self.out_end = Some(p) + Some(size);
             }
         }
     }
@@ -141,15 +141,15 @@ impl State<'static> {
         let mut n = 2;
 
         for i in 0..32 {
-            *self.counter_select[i] = self.counters[n].clone();
+            self.counter_select[i] = n as usize;
             //TODO: Make sure this is OK
             n -= 1;
             if n == 0 {
                 n = 3;
             }
         }
-        *self.counter_select[0] = self.counters[0].clone();
-        *self.counter_select[30] = self.counters[2].clone();
+        self.counter_select[0] = 0;
+        self.counter_select[30] = 2;
     }
 
     pub fn run_counter(&mut self, i: isize) {
