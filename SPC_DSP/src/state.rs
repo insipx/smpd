@@ -17,8 +17,8 @@ use config::*;
 //  and then debugging here I come!
 
 pub type sample_t = i16;
-const NULL_SAMPLE_T:*mut sample_t = 0 as *mut sample_t;
-const NULL_U8: *mut u8 = 0 as *mut u8;
+pub const NULL_SAMPLE_T:*mut sample_t = 0 as *mut sample_t;
+pub const NULL_U8: *mut u8 = 0 as *mut u8;
 
 
 pub struct State<'a> {
