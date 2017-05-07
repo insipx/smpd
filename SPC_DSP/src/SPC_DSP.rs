@@ -66,7 +66,7 @@ impl<'a> Emulator<'a> for Voice<'a> {
         m.set_ram(ram_64K); 
         m.mute_voices(0);
         m.disable_surround(false);
-        m.set_output(None, 0isize);
+        m.set_output(0 as *mut sample_t, 0isize);
         m.reset();
 
         if NDEBUG {

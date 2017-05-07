@@ -36,9 +36,9 @@ pub struct State<'a> {
     ram: *mut u8, // 64K shared RAM between DSP and SMP
     pub mute_mask: isize,
     surround_threshold: isize,
-    out: Option<&'a mut sample_t>,
-    out_end: Option<&'a mut sample_t>,
-    out_begin: Option<&'a mut sample_t>,
+    out: Option<*mut sample_t>,
+    out_end: Option<*mut sample_t>,
+    out_begin: Option<*mut sample_t>,
     extra: [sample_t; Sizes::EXTRA_SIZE as usize],
 }
 
@@ -99,22 +99,20 @@ impl State<'static> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output<'a>(&mut self, out: Option<&'a mut sample_t>, out_size: isize) {
+    pub fn set_output<'a>(&mut self, out: *mut sample_t, out_size: isize) {
         assert_eq!((out_size & 1), 0, "Out size is not even!: {}", out_size);
-        match out {
-            Some(ref mut p) => {
-                self.out_begin = Some(p);
-                self.out = Some(p);
-                self.out_end = add_offset(p, out_size); 
-            },
-            None => {
-                out = Some(&mut self.extra[0]);
-                out_size = Sizes::EXTRA_SIZE as isize;
-                self.out_begin = out;
-                self.out = out;
-                self.out_end = add_offset(out.unwrap(), out_size);
-            }
+        
+        if out.is_null() {
+            self.out_begin = Some(out);
+            self.out = Some(out);
+            self.out_end = Some(out.wrapping_offset(out_size));
         }
+
+        out = &mut self.extra[0];
+        out_size = Sizes::EXTRA_SIZE as isize;
+        self.out_begin = Some(out);
+        self.out = Some(out);
+        self.out_end = Some(out.wrapping_offset(out_size));
     }
 
     pub fn write(&mut self, addr: isize, data: isize) {
