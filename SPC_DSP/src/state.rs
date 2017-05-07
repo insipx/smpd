@@ -9,17 +9,13 @@ use SPC_DSP::Voice;
 use config::*;
 
 // Keeps track of the state of the Emulator
-// the Virtual Computer
-//
+// the Virtual CPU + RAM 
+
 // Forseable problems:
-//  I highly doubt any of the pointer arithmetic is correct.
-//  however I have it this way to get the basis out of the way
-//  and then debugging here I come!
+//  I highly doubt any of the pointer arithmetic is correct
 
 pub type sample_t = i16;
-pub const NULL_SAMPLE_T:*mut sample_t = 0 as *mut sample_t;
 pub const NULL_U8: *mut u8 = 0 as *mut u8;
-
 
 pub struct State<'a> {
     pub regs: [u8; Sizes::REGISTER_COUNT as usize],
@@ -39,10 +35,20 @@ pub struct State<'a> {
     ram: *mut u8, // 64K shared RAM between DSP and SMP
     pub mute_mask: isize,
     surround_threshold: isize,
-    out: *mut sample_t,
-    out_end: *mut sample_t,
-    out_begin: *mut sample_t,
+    out: Option<&'a mut sample_t>,
+    out_end: Option<&'a mut sample_t>,
+    out_begin: Option<&'a mut sample_t>,
     extra: [sample_t; Sizes::EXTRA_SIZE as usize],
+}
+
+impl<'a, 'b> Add<&'b sample_t> for 'a usize {
+    type Output = sample_t;
+
+    fn add(self, other: &'b sample_t) -> &sample_t {
+        Vector {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
 }
 
 //functions that directly modify the state
@@ -67,9 +73,9 @@ impl State<'static> {
             ram: NULL_U8, // 64K shared RAM between DSP and SMP
             mute_mask: 0,
             surround_threshold: 0,
-            out: NULL_SAMPLE_T,
-            out_end: NULL_SAMPLE_T,
-            out_begin: NULL_SAMPLE_T,
+            out: None,
+            out_end: None,
+            out_begin: None,
             extra: [0; Sizes::EXTRA_SIZE as usize],
         } 
     }
@@ -83,11 +89,11 @@ impl State<'static> {
     }
 
     pub fn out_pos(&self) -> sample_t {
-        return *self.out;
+        return *self.out.unwrap();
     }
 
     pub fn sample_count(&self) -> isize {
-        return *self.out as isize - *self.out_begin as isize;
+        return *self.out.unwrap() as isize - *self.out_begin.unwrap() as isize;
     }
 
     pub fn read(&self, addr: isize) -> u8 {
@@ -95,20 +101,23 @@ impl State<'static> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(&mut self, out: *mut sample_t, out_size: isize) {
-        assert_eq!((out_size & 1), 0);
-        if out == NULL_SAMPLE_T {
-            out = &mut self.extra as &mut [...]; 
-            out_size = Sizes::EXTRA_SIZE as isize;
-            self.out_begin = out;
-            self.out = out;
-            self.out_end = *(out + out_size);
+    pub fn set_output(&mut self, out: Option<&mut sample_t>, out_size: isize) {
+        assert_eq!((out_size & 1), 0, "Out size is not even!: {}", out_size);
+        match *out {
+            Some(ref mut p) => {
+                self.out_begin = Some(p);
+                self.out = Some(p);
+                
+                self.out_end = Some((p as u64 + (out_size as u64)) as &mut i16);
+            },
+            None => {
+                out = Some(&mut self.extra[0]);
+                out_size = Sizes::EXTRA_SIZE as isize;
+                self.out_begin = out;
+                self.out = out;
+                self.out_end = Some(out.unwrap() + out_size);
+            }
         }
-
-        self.out_begin = out;
-        self.out = out;
-        self.out_end = *(out + out_size);
-
     }
 
     pub fn write(&mut self, addr: isize, data: isize) {

@@ -139,9 +139,9 @@ private:
 		int mute_mask;
 		int surround_threshold;
 		sample_t* out; //points to memory of 'out' (output?)
-		sample_t* out_end;
-		sample_t* out_begin;
-		sample_t extra [extra_size];
+		sample_t* out_end;  //the end of (output?)
+		sample_t* out_begin;  //the beginning of (output?)
+		sample_t extra [extra_size];  //extra dunno what this is yet
 	};
 	state_t m;
 	

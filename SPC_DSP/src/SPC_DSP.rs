@@ -1,7 +1,6 @@
 use std::ptr;
 
 use state::sample_t as sample_t;
-use state::NULL_SAMPLE_T as NULL_SAMPLE_T;
 use state::NULL_U8 as NULL_U8;
 use registers::GlobalRegisters;
 use registers::EnvMode;
@@ -51,7 +50,7 @@ pub struct Voice<'a> {
 //TODO: This probably will work, but it's organization sucks, I think.
 pub trait Emulator<'a> {
     
-    fn init(&self, ram_64K: &u8);
+    fn init(&self, ram_64K: &mut u8);
 
     fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]);
 
@@ -63,14 +62,13 @@ pub trait Emulator<'a> {
 
 impl<'a> Emulator<'a> for Voice<'a> {
    
-    fn init(&self, ram_64K: &u8) {
+    fn init(&self, ram_64K: &mut u8) {
         m.set_ram(ram_64K); 
         m.mute_voices(0);
         m.disable_surround(false);
-        m.set_output(NULL_SAMPLE_T, 0isize);
+        m.set_output(None, 0isize);
         m.reset();
 
-        //debug
         if NDEBUG {
             assert_eq!(0x8000 as i16, -0x8000);
             assert!( (-1 >> 1) == -1 );
