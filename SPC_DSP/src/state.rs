@@ -1,5 +1,6 @@
 use macros;
 
+use std::ops::Add;
 use std::ptr;
 
 use registers::VoiceRegisters;
@@ -41,14 +42,11 @@ pub struct State<'a> {
     extra: [sample_t; Sizes::EXTRA_SIZE as usize],
 }
 
-impl<'a, 'b> Add<&'b sample_t> for 'a usize {
-    type Output = sample_t;
-
-    fn add(self, other: &'b sample_t) -> &sample_t {
-        Vector {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
+fn add_offset(ptr: &mut sample_t, offset: isize) -> Option<&mut sample_t> {
+    let temp: *mut sample_t = ptr;
+    temp.wrapping_offset(offset);
+    ptr = &mut temp.as_ref().unwrap();
+    return Some(ptr);
 }
 
 //functions that directly modify the state
@@ -101,21 +99,20 @@ impl State<'static> {
         return self.regs[addr as usize];
     }
 
-    pub fn set_output(&mut self, out: Option<&mut sample_t>, out_size: isize) {
+    pub fn set_output<'a>(&mut self, out: Option<&'a mut sample_t>, out_size: isize) {
         assert_eq!((out_size & 1), 0, "Out size is not even!: {}", out_size);
-        match *out {
+        match out {
             Some(ref mut p) => {
                 self.out_begin = Some(p);
                 self.out = Some(p);
-                
-                self.out_end = Some((p as u64 + (out_size as u64)) as &mut i16);
+                self.out_end = add_offset(p, out_size); 
             },
             None => {
                 out = Some(&mut self.extra[0]);
                 out_size = Sizes::EXTRA_SIZE as isize;
                 self.out_begin = out;
                 self.out = out;
-                self.out_end = Some(out.unwrap() + out_size);
+                self.out_end = add_offset(out.unwrap(), out_size);
             }
         }
     }
