@@ -31,7 +31,7 @@ pub struct State<'a> {
     counters: [usize; 4],
     pub new_kon: isize,
     t_koff: isize,
-    pub voices: [Voice<'a>; Sizes::VOICE_COUNT as usize],
+    pub voices: [Voice; Sizes::VOICE_COUNT as usize],
     counter_select: [usize; 32],
     ram: *mut u8, // 64K shared RAM between DSP and SMP
     pub mute_mask: isize,
@@ -40,13 +40,6 @@ pub struct State<'a> {
     out_end: Option<*mut sample_t>,
     out_begin: Option<*mut sample_t>,
     extra: [sample_t; Sizes::EXTRA_SIZE as usize],
-}
-
-fn add_offset(ptr: &mut sample_t, offset: isize) -> Option<&mut sample_t> {
-    let temp: *mut sample_t = ptr;
-    temp.wrapping_offset(offset);
-    ptr = &mut temp.as_ref().unwrap();
-    return Some(ptr);
 }
 
 //functions that directly modify the state
@@ -66,7 +59,7 @@ impl State<'static> {
             counters: [0; 4],
             new_kon: 0,
             t_koff: 0,
-            voices: [{}; Sizes::VOICE_COUNT as usize],
+            voices: [Voice::new(); Sizes::VOICE_COUNT as usize],
             counter_select: [0;32],
             ram: NULL_U8, // 64K shared RAM between DSP and SMP
             mute_mask: 0,
@@ -86,12 +79,12 @@ impl State<'static> {
         return self.extra;
     }
 
-    pub fn out_pos(&self) -> sample_t {
-        return *self.out.unwrap();
+    pub fn out_pos(&self) -> *const sample_t {
+        return self.out.unwrap();
     }
 
-    pub fn sample_count(&self) -> isize {
-        return *self.out.unwrap() as isize - *self.out_begin.unwrap() as isize;
+    pub fn sample_count(&self) -> *const sample_t {
+        return self.out.unwrap().wrapping_offset(-(self.out_begin.unwrap() as isize));
     }
 
     pub fn read(&self, addr: isize) -> u8 {
@@ -108,8 +101,8 @@ impl State<'static> {
             self.out_end = Some(out.wrapping_offset(out_size));
         }
 
-        out = &mut self.extra[0];
-        out_size = Sizes::EXTRA_SIZE as isize;
+        let out: *mut sample_t = &mut self.extra[0];
+        let out_size = Sizes::EXTRA_SIZE as isize;
         self.out_begin = Some(out);
         self.out = Some(out);
         self.out_end = Some(out.wrapping_offset(out_size));
@@ -205,8 +198,8 @@ impl State<'static> {
         }
         let v = &mut self.voices[(addr >> 4) as usize];
         let enabled: isize = v.enabled;
-        *v.volume[0] = (l as isize) & enabled;
-        *v.volume[1] = (r as isize) & enabled;
+        v.volume[0] = (l as isize) & enabled;
+        v.volume[1] = (r as isize) & enabled;
     }
 
     pub fn disable_surround(&mut self, disable: bool) {

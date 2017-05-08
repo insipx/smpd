@@ -10,10 +10,6 @@ use config::*;
 
 use macros;
 
-
-//global state
-const m:State = State::new();
-
 pub static counter_mask: [u32; 32] =
 [
 	rate!(   2,2), rate!(2048,4), rate!(1536,3),
@@ -30,7 +26,8 @@ pub static counter_mask: [u32; 32] =
 	               rate!(   1,4)
 ];
 
-pub struct Voice<'a> {
+#[derive(Debug, Copy, Clone)]
+pub struct Voice {
     // decoded samples. should be twice the size to simplify wrap handling
     buf: [isize; (Sizes::BRR_BUF_SIZE * 2) as usize],
     pub buf_pos: usize, // place in buffer where next samples will be decoded
@@ -41,15 +38,33 @@ pub struct Voice<'a> {
     env_mode: EnvMode,
     env: isize, // current envelope level
     hidden_env: isize, // used by GAIN mode 7, obscure quirk
-    pub volume: [&'a mut isize; 2], // copy of volume from DSP registers, with surround disabled
+    pub volume: [isize; 2], // copy of volume from DSP registers, with surround disabled
     pub enabled: isize, // -1 if enabled, 0 if muted
                     //TODO: Consider changing enabled to bool
 }
 
+impl Voice {
+    pub fn new() -> Voice {
+        Voice {
+            buf: [0isize; ((Sizes::BRR_BUF_SIZE * 2) as usize)],
+            buf_pos: 0,
+            interp_pos: 0,
+            brr_addr: 0,
+            brr_offset: 0,
+            kon_delay: 0,
+            env_mode: EnvMode::env_release,
+            env: 0,
+            hidden_env: 0,
+            volume: [0isize; 2],
+            enabled: 0
+        }  
+    }
+}
 
 //TODO: This probably will work, but it's organization sucks, I think.
 pub trait Emulator<'a> {
-    
+    const m:State<'a> = State::new();
+
     fn init(&self, ram_64K: &mut u8);
 
     fn load(&mut self, regs: [u8; Sizes::REGISTER_COUNT as usize]);
@@ -60,7 +75,7 @@ pub trait Emulator<'a> {
 }
 
 
-impl<'a> Emulator<'a> for Voice<'a> {
+impl<'a> Emulator<'a> for Voice {
    
     fn init(&self, ram_64K: &mut u8) {
         m.set_ram(ram_64K); 
@@ -86,12 +101,12 @@ impl<'a> Emulator<'a> for Voice<'a> {
         let mut i:isize;
         //be careful here
         for i in (0..Sizes::VOICE_COUNT).rev() {
-            m.voices[i].brr_offset = 1;
-            m.voices[i].buf_pos = 0;
+            self.m.voices[i].brr_offset = 1;
+            self.m.voices[i].buf_pos = 0;
         }
-        m.new_kon = reg!(kon) as isize;
-        m.mute_voices(m.mute_mask);
-        m.soft_reset_common();
+        self.m.new_kon = reg!(kon) as isize;
+        self.m.mute_voices(m.mute_mask);
+        self.m.soft_reset_common();
     }
 
     fn run(clock_count: isize) {
